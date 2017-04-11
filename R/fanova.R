@@ -44,9 +44,13 @@ functionalANOVA = function(data, vars, n = 10, model,
   ## as a group
   points = sapply(effects.variables, function(x)
     uniformGrid(data[, x], n), simplify = FALSE)
-  grid = lapply(effects, function(x)
-    cartesianExpand(expand.grid(points[x]),
-      as.data.table(points[!names(points) %in% x])))
+  grid = lapply(effects, function(x) {
+    ret = expand.grid(points[x])
+    if (!all(names(points) %in% x))
+      cartesianExpand(ret, as.data.table(points[!names(points) %in% x]))
+    else
+      ret
+  })
   names(grid) = effects.names
   grid = rbindlist(grid, fill = TRUE, idcol = "effect")
 
