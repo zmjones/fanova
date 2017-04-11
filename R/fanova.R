@@ -70,7 +70,7 @@ functionalANOVA = function(data, vars, n = 10, model,
   ## extract coefficients and assign to f
   
   ## create sparse indicator matrix
-  formula = as.formula(paste0("~", paste0(effects.names, collapse = "+")))
+  formula = as.formula(paste0("~ -1 +", paste0(effects.names, collapse = "+")))
   design = sparse.model.matrix(formula,
     grid[, lapply(.SD, as.factor), .SDcols = effects.variables])
   effect.idx = attributes(design)$assign
@@ -79,10 +79,12 @@ functionalANOVA = function(data, vars, n = 10, model,
   fit = glmnet(design, preds, "gaussian", weights = w, lambda = 0)
   ## extract coefficients and associated variable values and
   ## form them into something useable
-  betas = c(fit$a0, fit$beta[-1, 1])
+  betas = fit$beta[, 1]
+  betas[betas == 0] = NA
   betas = lapply(unique(effect.idx), function(x)
     data.table("f" = betas[effect.idx == x]))
-  names(betas) = c("intercept", attributes(terms(formula))$term.labels)
+  names(betas) = attributes(terms(formula))$term.labels
+  betas = c(list("intercept" = data.table("f" = fit$a0)), betas)
   betas = rbindlist(betas, fill = TRUE, idcol = "effect")
   
   id = strsplit(attributes(design)$Dimnames[[2]], ":")
@@ -103,7 +105,8 @@ functionalANOVA = function(data, vars, n = 10, model,
       value = suppressWarnings(as.vector(values[[variable]], data.types[variable])))
 
   ## combine everything for return
-  ret = cbind(betas, values)
+  ret = cbind(betas[-1, ], values)
+  ret = merge(betas[1, ], ret, all = TRUE)
   ret.effects = sapply(c(list(vars), getSubsets(vars)),
     function(x) paste0(x, collapse = ":"))
   ret[ret$effect %in% c(ret.effects, "intercept"),
