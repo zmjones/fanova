@@ -72,11 +72,10 @@ functionalANOVA = function(data, vars, n = 10, model,
   effect.idx = attributes(design)$assign
   
   ## anova fit
-  fit = glmnet(design, preds, "gaussian", weights = w, lambda = 0, intercept = TRUE,
-    standardize = FALSE)
+  fit = glmnet(design, preds, "gaussian", weights = w, lambda = 0)
   ## extract coefficients and associated variable values and
   ## form them into something useable
-  betas = fit$beta[, 1]
+  betas = c(fit$a0, fit$beta[-1, 1])
   betas = lapply(unique(effect.idx), function(x)
     data.table("f" = betas[effect.idx == x]))
   names(betas) = c("intercept", attributes(terms(formula))$term.labels)
