@@ -23,8 +23,15 @@ predict.fun = function(object, newdata)
   newdata$x1 + newdata$x2^2 + 10 * max(newdata$x1 - 1, 0)^2 *
     max(newdata$x2 - 1, 0)^2
 weight.fun = function(design, data) ifelse(design$x1 > 1 & design$x2 > 1, 0, 1)
-fa = functionalANOVA(data, "x1", 10, NULL, predict.fun, weight.fun)
-ggplot(fa, aes(x1, f)) + geom_point() + geom_line()
+
+plt = list(
+  "unweighted" = functionalANOVA(data, c("x1", "x2"), 10, NULL, predict.fun),
+  "weighted" = functionalANOVA(data, c("x1", "x2"), 10, NULL, predict.fun, weight.fun)
+)
+plt = rbindlist(plt, idcol = "method")
+ggplot(plt[plt$effect == "x1:x2", ], aes(x1, x2, z = f)) +
+  geom_contour(aes(color = ..level..)) +
+  facet_wrap(~ method)
 ````
 
 ```{r}
