@@ -11,6 +11,25 @@ vignette: >
 library(fanova)
 library(data.table)
 library(ggplot2)
+library(randomForest)
+```
+
+```{r}
+data(Boston, package = "MASS")
+boston.features = Boston[, -ncol(Boston)]
+boston.target = Boston$medv
+
+model = randomForest(boston.features, boston.target)
+
+fa = functionalANOVA(boston.features, c("rm", "lstat"), c(10, 2), model)
+print(fa)
+
+plt = melt(fa[fa$effect %in% c("rm", "lstat"), ],
+  id.vars = c("f", "effect"), na.rm = TRUE)
+ggplot(plt, aes(value, f)) +
+  geom_point() + geom_line() + facet_wrap(~ variable, scales = "free_x")
+
+ggplot(fa[fa$effect == "rm:lstat", ], aes(rm, lstat, z = f, fill = f)) + geom_raster()
 ```
 
 ```{r}
@@ -64,8 +83,8 @@ l.weight = function(design, data) {
 vars = c("x", "y")
 plt = list(
   "unweighted" = functionalANOVA(data, vars, 10, NULL, predict.fun, no.weight),
-  "corner-deleted" = functionalANOVA(data, vars, 10, NULL, predict.fun, corner.weight),
-  "l-shaped" = functionalANOVA(data, vars, 10, NULL, predict.fun, l.weight)
+  "corner-deleted" = functionalANOVA(data, vars, 10, NULL, predict.fun, corner.weight)## ,
+  ## "l-shaped" = functionalANOVA(data, vars, 10, NULL, predict.fun, l.weight)
 )
 plt = rbindlist(plt, idcol = "method")
 ggplot(plt[plt$effect == "x:y", ], aes(x, y, z = f)) +

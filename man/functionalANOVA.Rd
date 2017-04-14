@@ -4,8 +4,9 @@
 \alias{functionalANOVA}
 \title{generalized functional analysis of variance}
 \usage{
-functionalANOVA(data, vars, n = 10, model, predict.fun = function(object,
-  newdata) predict(object, newdata = newdata), weight.fun = NULL)
+functionalANOVA(data, vars, n = c(10, 2), model,
+  predict.fun = function(object, newdata) predict(object, newdata = newdata),
+  weight.fun = NULL)
 }
 \arguments{
 \item{data}{a \code{data.frame} or \code{data.table} which contains the features/covariates on which \code{predict.fun} was learned/estimated.}

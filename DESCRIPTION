@@ -8,7 +8,7 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.0.1
-Imports: checkmate, data.table, mmpf, glmnet, Matrix
+Imports: checkmate, data.table, mmpf, glmnet, MatrixModels
 Suggests: testthat,
     rmarkdown,
     ggplot2

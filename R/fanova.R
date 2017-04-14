@@ -1,8 +1,8 @@
 #' @importFrom mmpf uniformGrid cartesianExpand
-#' @importFrom data.table data.table as.data.table rbindlist set .SD
+#' @importFrom data.table data.table as.data.table rbindlist set .SD setDT
 #' @importFrom stats predict as.formula terms
 #' @importFrom glmnet glmnet
-#' @importFrom Matrix sparse.model.matrix
+#' @importFrom MatrixModels model.Matrix
 #' @importFrom utils combn
 #'
 #' @title generalized functional analysis of variance
@@ -19,10 +19,11 @@
 #' @references Giles Hooker. Generalized Functional ANOVA Diagnostics for High Dimensional Functions of Dependent Variables, Journal of Computational and Graphical Statistics, Vol. 16, No. 3 (2007), pp. 709-732.
 #'
 #' @export
-functionalANOVA = function(data, vars, n = 10, model,
+functionalANOVA = function(data, vars, n = c(10, 2), model,
   predict.fun = function(object, newdata) predict(object, newdata = newdata),
   weight.fun = NULL) {
 
+  setDT(data)
   ## define effects to estimate
   ## u is the subset of x with indices in u
   ## estimate effects for
@@ -37,26 +38,18 @@ functionalANOVA = function(data, vars, n = 10, model,
   effects = unique(unname(unlist(effects, recursive = FALSE)))
   effects.names = sapply(effects, function(x) paste0(x, collapse = ":"))
   effects.variables = unique(unlist(effects))
-  
+
   ## make a grid of points for the effects
   ## treat non effect variables as a unit, permute
   ## effect variable grids wrt each other and the non effect variables
   ## as a group
-  points = sapply(effects.variables, function(x)
-    uniformGrid(data[, x], n), simplify = FALSE)
-  grid = lapply(effects, function(x) {
-    ret = expand.grid(points[x])
-    if (!all(names(points) %in% x))
-      cartesianExpand(ret, as.data.table(points[!names(points) %in% x]))
-    else
-      ret
-  })
-  names(grid) = effects.names
-  grid = rbindlist(grid, fill = TRUE, idcol = "effect")
+  points = expand.grid(uniformGrid(data[, vars, with = FALSE], n[1]))
+  not.points = sapply(effects.variables[!effects.variables %in% vars],
+    function(x) uniformGrid(data[, x, with = FALSE], n[2]), simplify = FALSE)
+  grid = cartesianExpand(points, as.data.frame(not.points))
 
   ## evaluate model on grid
-  preds = predict.fun(model, grid[, !"effect", with = FALSE])
-  ## preds = predict.fun(model, grid)
+  preds = predict.fun(model, grid)
   
   ## evaluate weight function on grid
   if (!is.null(weight.fun))
@@ -71,8 +64,8 @@ functionalANOVA = function(data, vars, n = 10, model,
   
   ## create sparse indicator matrix
   formula = as.formula(paste0("~ -1 +", paste0(effects.names, collapse = "+")))
-  design = sparse.model.matrix(formula,
-    grid[, lapply(.SD, as.factor), .SDcols = effects.variables])
+  design = model.Matrix(formula,
+    grid[, lapply(.SD, as.factor), .SDcols = effects.variables], sparse = TRUE)
   effect.idx = attributes(design)$assign
   
   ## anova fit
@@ -99,7 +92,7 @@ functionalANOVA = function(data, vars, n = 10, model,
   values = rbindlist(values, fill = TRUE)[, effects.variables, with = FALSE]
   
   ## cast all effect variables to the correct class (from the input data)
-  data.types = sapply(data[, effects.variables], class)
+  data.types = sapply(data[, effects.variables, with = FALSE], class)
   for (variable in names(data.types))
     set(values, j = variable,
       value = suppressWarnings(as.vector(values[[variable]], data.types[variable])))
