@@ -14,6 +14,8 @@ library(ggplot2)
 library(randomForest)
 ```
 
+
+
 ```{r}
 data(Boston, package = "MASS")
 boston.features = Boston[, -ncol(Boston)]
@@ -33,27 +35,6 @@ ggplot(fa[fa$effect == "rm:lstat", ], aes(rm, lstat, z = f, fill = f)) + geom_ra
 ```
 
 ```{r}
-## from section 2 of the paper
-data = data.frame(x1 = runif(100, 0, 2), x2 = runif(100, 0, 2))
-data = data[!(data$x1 > 1 & data$x2 > 1), ]
-F = function(x1, x2) x1 + x2^2
-G = function(x1, x2) 10 * max(x1 - 1, 0)^2 * max(x2 - 1, 0)^2
-predict.fun = function(object, newdata)
-  newdata$x1 + newdata$x2^2 + 10 * max(newdata$x1 - 1, 0)^2 *
-    max(newdata$x2 - 1, 0)^2
-weight.fun = function(design, data) ifelse(design$x1 > 1 & design$x2 > 1, 0, 1)
-
-plt = list(
-  "unweighted" = functionalANOVA(data, c("x1", "x2"), 10, NULL, predict.fun),
-  "weighted" = functionalANOVA(data, c("x1", "x2"), 10, NULL, predict.fun, weight.fun)
-)
-plt = rbindlist(plt, idcol = "method")
-ggplot(plt[plt$effect == "x1:x2", ], aes(x1, x2, z = f)) +
-  geom_contour(aes(color = ..level..)) +
-  facet_wrap(~ method)
-````
-
-```{r}
 ## from section 9 of the paper
 data = data.frame(
   x = runif(100),
@@ -62,32 +43,22 @@ data = data.frame(
 )
 
 F = function(x, y, z) x * y + x * z + y * z
-G = function(x, y, z) 5 * ifelse(x > .5 & y > .5 & z > .5, 1, 0)
+G = function(x, y, z) 2 * ifelse(x > .5 & y > .5 & z > .5, 1, 0)
 predict.fun = function(object, newdata)
   F(newdata$x, newdata$y, newdata$z) + G(newdata$x, newdata$y, newdata$z)
 
 no.weight = function(design, data) rep(1, nrow(design))
 corner.weight = function(design, data)
   ifelse(design$x > .5 & design$y > .5 & design$z > .5, 0, 1)
-l.weight = function(design, data) {
-  w = rep(1, nrow(design))
-  effects = strsplit(unique(design$effect), ":")
-  int.effects = effects[sapply(effects, function(x) length(x)) > 1]
-  for (x in effects) {
-    idx = which(design$effect == paste0(x, collapse = ":"))
-    w[idx] = ifelse(apply(design[idx, x, with = FALSE] > .5, 1, any), 0, 1)
-  }
-  w
-}
 
 vars = c("x", "y")
+n = c(10, 2)
 plt = list(
-  "unweighted" = functionalANOVA(data, vars, 10, NULL, predict.fun, no.weight),
-  "corner-deleted" = functionalANOVA(data, vars, 10, NULL, predict.fun, corner.weight)## ,
-  ## "l-shaped" = functionalANOVA(data, vars, 10, NULL, predict.fun, l.weight)
+  "unweighted" = functionalANOVA(data, vars, n, NULL, predict.fun, no.weight),
+  "corner-deleted" = functionalANOVA(data, vars, n, NULL, predict.fun, corner.weight)
 )
 plt = rbindlist(plt, idcol = "method")
-ggplot(plt[plt$effect == "x:y", ], aes(x, y, z = f)) +
-  geom_contour(aes(color = ..level..)) +
+ggplot(plt[plt$effect == "x:y", ], aes(x, y, fill = f, z = f)) +
+  geom_raster() + 
   facet_wrap(~ method)
 ```

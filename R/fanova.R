@@ -59,9 +59,9 @@ functionalANOVA = function(data, vars, n = c(10, 2), model,
 
   ## this is the simple method from the paper
   ## turn each effect into a matrix of indicators
-  ## weighted least squares of matrix on F with w
+  ## weighted least squares on sparse design matrix
   ## extract coefficients and assign to f
-  
+
   ## create sparse indicator matrix
   formula = as.formula(paste0("~ -1 +", paste0(effects.names, collapse = "+")))
   design = model.Matrix(formula,
