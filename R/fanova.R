@@ -66,22 +66,28 @@ functionalANOVA = function(data, vars, n = c(10, 2), model,
   formula = as.formula(paste0("~ -1 +", paste0(effects.names, collapse = "+")))
   design = model.Matrix(formula,
     grid[, lapply(.SD, as.factor), .SDcols = effects.variables], sparse = TRUE)
-  effect.idx = attributes(design)$assign
   
   ## anova fit
   fit = glmnet(design, preds, "gaussian", weights = w, lambda = 0)
   ## extract coefficients and associated variable values and
   ## form them into something useable
-  betas = fit$beta[, 1]
+  terms.to.extract = c(paste0(vars, collapse = ":"), subset.vars)
+  terms.estimated = attributes(terms(formula))$term.labels
+  max.idx = sum(sapply(terms.to.extract, function(x)
+    grepl(paste0("^", x, "$"), terms.estimated)))
+
+  effect.idx = attributes(design)$assign
+  idx = effect.idx <= max.idx
+  betas = fit$beta[idx, 1]
   betas[betas == 0] = NA
-  betas = lapply(unique(effect.idx), function(x)
-    data.table("f" = betas[effect.idx == x]))
-  names(betas) = attributes(terms(formula))$term.labels
+  betas = lapply(unique(effect.idx[idx]),
+    function(x) data.table("f" = betas[effect.idx == x]))
+  names(betas) = terms.to.extract
   betas = c(list("intercept" = data.table("f" = fit$a0)), betas)
   betas = rbindlist(betas, fill = TRUE, idcol = "effect")
-  
-  id = strsplit(attributes(design)$Dimnames[[2]], ":")
-  re = paste0("^", effects.variables, collapse = "|")
+
+  id = strsplit(attributes(design)$Dimnames[[2]][idx], ":")
+  re = paste0("^", vars, collapse = "|")
   values = sapply(id, function(x) {
     m = gregexpr(re, x)
     variables = regmatches(x, m)
@@ -89,19 +95,15 @@ functionalANOVA = function(data, vars, n = c(10, 2), model,
     names(values) = variables
     as.data.table(values)
   }, simplify = FALSE)
-  values = rbindlist(values, fill = TRUE)[, effects.variables, with = FALSE]
+  values = rbindlist(values, fill = TRUE)[, vars, with = FALSE]
   
   ## cast all effect variables to the correct class (from the input data)
-  data.types = sapply(data[, effects.variables, with = FALSE], class)
-  for (variable in names(data.types))
-    set(values, j = variable,
-      value = suppressWarnings(as.vector(values[[variable]], data.types[variable])))
+  data.types = sapply(data[, vars, with = FALSE], class)
+
+  for (x in vars)
+    set(values, j = x, value = cast(values[[x]], data.types[x]))
 
   ## combine everything for return
   ret = cbind(betas[-1, ], values)
-  ret = merge(betas[1, ], ret, all = TRUE)
-  ret.effects = sapply(c(list(vars), getSubsets(vars)),
-    function(x) paste0(x, collapse = ":"))
-  ret[ret$effect %in% c(ret.effects, "intercept"),
-    c("f", "effect", unique(getSubsets(vars, FALSE))), with = FALSE]
+  merge(betas[1, ], ret, all = TRUE)
 }
