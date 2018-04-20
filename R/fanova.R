@@ -88,8 +88,8 @@ functionalANOVA = function(data, vars, n = c(10, 2), model,
   betas[betas == 0] = NA
   betas = lapply(unique(effect.idx[idx]),
     function(x) data.table("f" = betas[effect.idx == x]))
-  names(betas) = terms.to.extract
-  betas = c(list("intercept" = data.table("f" = fit$a0)), betas)
+  names(betas) = c("intercept", terms.to.extract)
+  betas[["intercept"]] = data.table("f" = fit$a0)
   betas = rbindlist(betas, fill = TRUE, idcol = "effect")
 
   id = strsplit(attributes(design)$Dimnames[[2]][idx], ":")
@@ -110,8 +110,7 @@ functionalANOVA = function(data, vars, n = c(10, 2), model,
     set(values, j = x, value = cast(values[[x]], data.types[x]))
 
   ## combine everything for return
-  ret = cbind(betas[-1, ], values)
-  merge(betas[1, ], ret, all = TRUE)
+  cbind(betas, values)
 }
 
 
