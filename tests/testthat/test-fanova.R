@@ -54,7 +54,3 @@ test_that("fitting with a function for 'f' works", {
   expect_s3_class(fit, "fanova")
   expect_equal(fit$y, my_func(X))
 })
-
-test_that("fanova_hello works", {
-  expect_equal(fanova_hello(), "Hello from fanova!")
-})

@@ -3,7 +3,7 @@ Type: Package
 Title: Example R package for functional ANOVA
 Version: 0.1.0
 Author: Zach Jones
-Maintainer: Zach Jones <zmjones@example.com>
+Maintainer: Zach Jones <zmjone2992@gmail.com>
 Description: A minimal R package for functional ANOVA analysis.
 License: MIT + file LICENSE
 Encoding: UTF-8

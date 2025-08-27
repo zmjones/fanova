@@ -76,6 +76,7 @@ Now, we fit the fANOVA model up to second-order interactions.
 
 ```{r fit}
 fit <- fanova_fit(X, y, max_order=2)
+summary(fit)
 ```
 
 We can inspect the variance shares using `fanova_importance`.
