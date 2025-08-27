@@ -1,0 +1,20 @@
+Package: fanova
+Type: Package
+Title: Example R package for functional ANOVA
+Version: 0.1.0
+Author: Zach Jones
+Maintainer: Zach Jones <zmjones@example.com>
+Description: A minimal R package for functional ANOVA analysis.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports: 
+    MASS,
+    stats,
+    utils
+Suggests: 
+    knitr,
+    rmarkdown,
+    testthat
+VignetteBuilder: knitr
+RoxygenNote: 7.3.2

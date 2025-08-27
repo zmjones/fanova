@@ -1,0 +1,97 @@
+---
+title: "Functional ANOVA with the fanova Package"
+author: "Zach Jones"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Functional ANOVA with the fanova Package}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Introduction
+
+The `fanova` package provides an implementation of the Generalized Functional ANOVA decomposition, as described by Hooker (2007). The goal of functional ANOVA is to decompose a complex, multivariate function `f(x)` into a sum of simpler, structurally orthogonal components. This allows us to understand the function's behavior in terms of its main effects (how it varies with single inputs) and interactions (how it varies with combinations of inputs).
+
+This is particularly useful for interpreting complex "black-box" models (like machine learning models) or for analyzing the output of computer experiments.
+
+## The Functional ANOVA Model
+
+Given a function `f(x)` where `x` is a p-dimensional vector `(x_1, ..., x_p)`, the fANOVA decomposition represents it as:
+
+`f(x) = f_0 + \sum_{i=1}^{p} f_i(x_i) + \sum_{i<j} f_{ij}(x_i, x_j) + \dots`
+
+Where:
+- `f_0` is the overall mean of the function, `E[f(x)]`.
+- `f_i(x_i)` are the main effects, representing the deviation from the mean due to variable `x_i`.
+- `f_{ij}(x_i, x_j)` are the two-way interactions.
+- Higher-order terms can be included as well.
+
+A key property of this decomposition is **hierarchical orthogonality**. This means that each component function has a zero mean when integrated over any of its input variables. For example:
+- `E[f_i(x_i)] = 0`
+- `E[f_{ij}(x_i, x_j) | x_i] = 0` and `E[f_{ij}(x_i, x_j) | x_j] = 0`
+
+This orthogonality ensures that the components are unique and that the variance of `f(x)` can be neatly partitioned among them.
+
+## Implementation in `fanova`
+
+The `fanova` package approximates the component functions `f_i`, `f_{ij}`, etc., using regression splines and enforces the orthogonality constraints through a series of projections.
+
+The core steps inside `fanova_fit` are:
+
+1.  **Estimate the Intercept**: The overall mean `f_0` is estimated as the (weighted) average of the observed function outputs `y`. The response is then centered.
+
+2.  **Build Main Effects**: For each variable `x_j`, a basis of spline functions is created using `splines::bs`. These basis functions are then centered to ensure they have a zero mean (as implemented in `build_basis_1d`). This enforces the `E[f_j] = 0` constraint.
+
+3.  **Build Interaction Effects**: For an interaction term like `f_{ij}`, the implementation first creates a tensor product of the main effect bases for `x_i` and `x_j` (using `tensor2`). To enforce hierarchical orthogonality, this new basis is then made orthogonal to the space spanned by all lower-order terms (the intercept, `f_i`, and `f_j`). This is achieved via a weighted Gram-Schmidt-like projection implemented in `w_residualize`.
+
+4.  **Solve the System**: All the orthogonal basis blocks (for main effects, interactions, etc.) are combined into a single design matrix. A weighted least squares regression (`wls_solve`) is then performed on the centered response `y` to find the coefficients for all basis functions simultaneously.
+
+5.  **Calculate Importance**: The variance of each fitted component (`f_i`, `f_{ij}`, etc.) is calculated. The `fanova_importance` function reports these variances as a share of the total variance, providing a measure of each component's contribution to the function's overall behavior.
+
+## Example Usage
+
+Let's walk through an example. We will create a synthetic function dominated by a quadratic main effect in `x1` and a strong interaction between `x1` and `x2`. Note that the inputs `x1` and `x2` are correlated.
+
+```{r setup}
+library(fanova)
+
+set.seed(1)
+n <- 400
+x1 <- rnorm(n)
+x2 <- 0.7*x1 + rnorm(n, sd=.7)
+ftrue <- function(x) x[,1]^2 + x[,2] + 1.5*x[,1]*x[,2]
+X <- cbind(x1, x2)
+y <- ftrue(X)
+```
+
+Now, we fit the fANOVA model up to second-order interactions.
+
+```{r fit}
+fit <- fanova_fit(X, y, max_order=2)
+```
+
+We can inspect the variance shares using `fanova_importance`.
+
+```{r importance}
+imps <- fanova_importance(fit)
+print(imps)
+```
+
+The component names are coded as `order_variable(s)`. So `1_1` is the main effect of the first variable, and `2_1_2` is the interaction between the first and second variables. As expected, these two components explain the vast majority of the variance.
+
+Finally, we can visualize these importance scores with the `plot` method.
+
+```{r plot, fig.width=7, fig.height=4}
+plot(fit)
+```
+
+This plot clearly shows that the main effect of `x1` and the `x1:x2` interaction are the most significant drivers of the function's behavior.
+
