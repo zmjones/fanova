@@ -76,6 +76,11 @@ Now, we fit the fANOVA model up to second-order interactions.
 
 ```{r fit}
 fit <- fanova_fit(X, y, max_order=2)
+```
+
+A good first step after fitting is to use the `summary()` method to get an overview of the model and its variance decomposition.
+
+```{r summary}
 summary(fit)
 ```
 
@@ -95,4 +100,3 @@ plot(fit)
 ```
 
 This plot clearly shows that the main effect of `x1` and the `x1:x2` interaction are the most significant drivers of the function's behavior.
-
